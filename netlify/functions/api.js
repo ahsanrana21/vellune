@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 
 const ORDER_STATUSES = ['Pending','Confirmed','Delivered','Cancelled'];
 const DEFAULT_PASSWORD = process.env.VELLUNE_ADMIN_PASSWORD || 'VELLUNE2026';
-const store = () => getStore({ name:'vellune-store', consistency:'strong' });
+const store = () => getStore({ name:'vellune', consistency:'strong' });
 const json = (obj,status=200,extra={}) => Response.json(obj,{status,headers:{'Cache-Control':'no-store',...extra}});
 const text = v => v == null ? '' : String(v);
 const num = v => Number(v) || 0;
