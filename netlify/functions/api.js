@@ -1,4 +1,4 @@
-const { getStore } = require('@netlify/blobs');
+const { getStore, connectLambda } = require('@netlify/blobs');
 
 const store = () => getStore({ name: 'vellune-store', consistency: 'strong' });
 
@@ -17,6 +17,8 @@ function json(data, status = 200) {
 
 exports.handler = async (event) => {
   try {
+    // Required for Netlify Blobs inside this function type; without it every order fails with a 500 error.
+    if (typeof connectLambda === 'function') connectLambda(event);
     const path = (event.path || '').replace(/^.*\/\.netlify\/functions\/api\/?/, '').replace(/^\/api\/?/, '');
     const method = event.httpMethod || 'GET';
 
