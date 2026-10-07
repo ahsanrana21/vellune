@@ -13,9 +13,13 @@ const readJson = async req => { try{return await req.json()}catch{return {}} };
 const listAll = async kind => {
   const s=store(); const {blobs}=await s.list({prefix:`${kind}/`});
   const rows=await Promise.all(blobs.map(b=>s.get(b.key,{type:'json'})));
-  return rows.filter(Boolean).sort((a,b)=>(a.id||0)-(b.id||0));
+  return rows.filter(Boolean).sort((a,b)=>String(a.createdAt||a.d||'').localeCompare(String(b.createdAt||b.d||'')));
 };
-const nextId = async kind => { const s=store(); const n=Number((await s.get(`counters/${kind}`,{type:'json'}))||0)+1; await s.setJSON(`counters/${kind}`,n); return n; };
+const makeOrderId = () => {
+  const stamp = Date.now().toString(36).toUpperCase();
+  const rand = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `VL${stamp}${rand}`;
+};
 const hash = v => crypto.createHash('sha256').update(text(v)).digest('hex');
 const secret = async()=> (await store().get('meta/admin_password_hash')) || hash(DEFAULT_PASSWORD);
 const sign = async p=>crypto.createHmac('sha256',await secret()).update(p).digest('hex');
@@ -26,6 +30,7 @@ const ensure = async()=>{const s=store();if(!(await s.get('meta/seeded'))){await
 export default async req => {
   try {
     const u=new URL(req.url), parts=u.pathname.replace(/\/+$/,'').split('/'), resource=parts[2]||'', idPart=parts[3], method=req.method, s=store();
+    if(resource==='health'&&method==='GET') return json({ok:true,service:'vellune-api',time:new Date().toISOString()});
     if(resource==='admin'&&idPart==='login'&&method==='POST'){const d=await readJson(req);if(hash(d.password)!==await secret())return json({error:'Wrong password'},401);return json({ok:true},200,{'Set-Cookie':await cookie()})}
     if(resource==='admin'&&idPart==='logout'&&method==='POST')return json({ok:true},200,{'Set-Cookie':'vl_admin=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0'});
     if(resource==='admin'&&idPart==='me'&&method==='GET')return json({admin:await logged(req)});
@@ -43,9 +48,12 @@ export default async req => {
         const d=await readJson(req), name=text(d.name).trim(), ph=text(d.ph).trim(), items=Array.isArray(d.items)?d.items.slice(0,50):[];
         if(!name||!ph)return json({ok:false,error:'Name and phone are required.'},400);
         if(!items.length)return json({ok:false,error:'No items in order.'},400);
-        const id='VL'+String(Date.now()).slice(-8), clean=items.map(i=>({id:text(i.id),name:text(i.name)||'Vellune Product',q:Math.max(1,Math.trunc(num(i.q))||1),price:num(i.price)}));
+        const id=makeOrderId(), clean=items.map(i=>({id:text(i.id),name:text(i.name)||'Vellune Product',q:Math.max(1,Math.trunc(num(i.q))||1),price:num(i.price)}));
         const total=clean.reduce((a,i)=>a+i.price*i.q,0), row={id,pn:clean.map(i=>`${i.name} x ${i.q}`).join(', '),items:clean,total,name,ph,c:text(d.c),a:text(d.a),no:text(d.no),st:'Pending',d:now(),createdAt:new Date().toISOString()};
-        await s.setJSON(key('orders',await nextId('orders')),row); return json({ok:true,order:row},201);
+        // Store directly under the public order ID. This removes the old counter dependency,
+        // which could make Place Order fail before the order was ever saved.
+        await s.setJSON(`orders/${id}`,row);
+        return json({ok:true,order:row},201);
       }
       if(!await logged(req))return json({error:'Login required'},401);
       const oid=idPart?decodeURIComponent(idPart):null;
