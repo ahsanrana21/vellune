@@ -1,24 +1,24 @@
-VELLUNE PROFESSIONAL
+VELLUNE NETLIFY + ONLINE ORDERS
 
-ONLINE:
-Upload the whole folder to your hosting. Open website.html for the storefront and admin.html for Admin.
-Keep website.html and admin.html on the same domain/origin so browser storage is shared.
+This version keeps the Vellune design and uses a Netlify Function + Netlify Blobs for shared online orders.
 
-LOCAL TESTING:
-Do NOT double-click website.html because browsers block localStorage on file:// pages.
-Double-click start_vellune.bat instead. It starts a local server and opens:
-http://127.0.0.1:8000/website.html
-Admin:
-http://127.0.0.1:8000/admin.html
+UPLOAD:
+1. Upload the CONTENTS of this folder to the ROOT of your GitHub repository.
+2. Deploy that repository on Netlify.
+3. Keep netlify.toml, package.json and netlify/functions/api.js in the repository root.
+4. Netlify will install @netlify/blobs and deploy the API automatically.
 
-DEFAULT ADMIN PIN: 1234
+PAGES:
+- /              -> index.html
+- /website.html  -> Vellune storefront
+- /admin         -> admin.html
+- /api/health    -> backend health check
+- /api/orders    -> online order API
 
 ORDER FLOW:
-Customer -> Add to Cart -> Checkout -> Place Order -> Order Received animation.
-On the same origin, the order is saved as vl_o and appears in Admin > Orders.
+Customer -> Place Order -> /api/orders -> Netlify Blobs -> Admin Orders
 
-NEW PRODUCT:
-In Admin > Products, tick "Show NEW badge". NEW products automatically move to the top.
+No Supabase key is required for this version.
 
-PHOTOS:
-Up to 4 product photos are supported. The first photo is the main photo and the rest are thumbnails/gallery images.
+IMPORTANT:
+Do not mix these files with the previous localStorage-only Vellune version. Replace the old files with this complete package.
