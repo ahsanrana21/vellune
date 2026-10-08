@@ -49,7 +49,7 @@ export default async req => {
         if(!name||!ph)return json({ok:false,error:'Name and phone are required.'},400);
         if(!items.length)return json({ok:false,error:'No items in order.'},400);
         const id=makeOrderId(), clean=items.map(i=>({id:text(i.id),name:text(i.name)||'Vellune Product',q:Math.max(1,Math.trunc(num(i.q))||1),price:num(i.price)}));
-        const total=clean.reduce((a,i)=>a+i.price*i.q,0), row={id,pn:clean.map(i=>`${i.name} x ${i.q}`).join(', '),items:clean,total,name,ph,c:text(d.c),a:text(d.a),no:text(d.no),st:'Pending',d:now(),createdAt:new Date().toISOString()};
+        const sub=clean.reduce((a,i)=>a+i.price*i.q,0), disc=Math.min(sub,Math.max(0,num(d.disc))), total=sub-disc, row={id,offer:disc?text(d.offer).slice(0,80):'',disc,pn:clean.map(i=>`${i.name} x ${i.q}`).join(', '),items:clean,total,name,ph,c:text(d.c),a:text(d.a),no:text(d.no),st:'Pending',d:now(),createdAt:new Date().toISOString()};
         // Store directly under the public order ID. This removes the old counter dependency,
         // which could make Place Order fail before the order was ever saved.
         await s.setJSON(`orders/${id}`,row);
