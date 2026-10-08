@@ -43,6 +43,11 @@ export default async req => {
       await s.set('meta/admin_password_hash',hash(d.new_password)); return json({ok:true},200,{'Set-Cookie':'vl_admin=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0'});
     }
 
+    if(resource==='catalog'&&method==='GET'){const c=await s.get('meta/catalog',{type:'json'});return json(c?{ok:true,products:c.products,site:c.site,at:c.at}:{ok:true,products:null})}
+    if(resource==='catalog'&&method==='PUT'){if(!await logged(req))return json({error:'Login required'},401);const d=await readJson(req);if(!Array.isArray(d.products))return json({ok:false,error:'products missing'},400);await s.setJSON('meta/catalog',{products:d.products,site:d.site&&typeof d.site==='object'?d.site:{},at:now()});return json({ok:true})}
+    if(resource==='img'&&method==='GET'&&idPart){const o=await s.get('img/'+idPart.replace(/[^a-f0-9]/gi,''),{type:'json'});if(!o)return new Response('Not found',{status:404});return new Response(Buffer.from(o.b,'base64'),{headers:{'Content-Type':o.t,'Cache-Control':'public, max-age=31536000, immutable'}})}
+    if(resource==='img'&&method==='PUT'){if(!await logged(req))return json({error:'Login required'},401);const d=await readJson(req);const m=/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(text(d.data));if(!m)return json({ok:false,error:'Bad image'},400);if(m[2].length>5000000)return json({ok:false,error:'Image too large'},413);const h=crypto.createHash('sha256').update(m[2]).digest('hex').slice(0,32);await s.setJSON('img/'+h,{t:m[1],b:m[2]});return json({ok:true,url:'/api/img/'+h})}
+
     if(resource==='orders'){
       if(method==='POST'&&!idPart){
         const d=await readJson(req), name=text(d.name).trim(), ph=text(d.ph).trim(), items=Array.isArray(d.items)?d.items.slice(0,50):[];
